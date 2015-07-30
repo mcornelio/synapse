@@ -12,6 +12,14 @@ access its cells dictionary.
 python setup.py sdist
 
 ##Usage
+Synapse applications can be used for any purpose or the
+synapse package can be used as a communication and data
+sharing framework for any application that would like to
+use the cell framework.
+
+This section outlines the most basic usage of the package:
+cooperating client and server synapse applications.
+
 To start an interactive "synapse" application:
 
     python -i -m synapse.main
