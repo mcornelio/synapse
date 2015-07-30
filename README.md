@@ -40,3 +40,10 @@ Start another interactive synapse application and connect to your server.
     3.141592653589793
 
 Notice how the client has a real-time view into the server's data.
+Each synapse server should have a unique port number for a specific host.
+If your server is on another host, you may specify a hostname or IP address.
+
+    sc> r = synapse_client(2500, '192.168.0.35');
+
+This will connect to the synapse server on '192.168.0.35' on port 2500.
+Connections may be bi-directional.  That is, a synapse application may be both a server and client.
