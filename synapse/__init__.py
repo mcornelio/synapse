@@ -72,7 +72,7 @@ nexus.title = "Synapse Console Interface v1.0"
 nexus.prompts = {'ps1':'sc> ', 'ps2':'.... '}
 nexus.exit_prompt = "Use exit() plus Return to exit."
 nexus.dict_list = []
-nexus.log_file = 'nexus.log'
+nexus.log_file = 'synapse.log'
 nexus.log_level = logging.WARNING
 
 def nexus_logger(name, file=nexus.log_file, level=nexus.log_level):
