@@ -14,9 +14,9 @@ To install the "synapse" python package:
 
 * Download or clone this repository
 * CD into the repository
-* Execute the following python command:
+* Execute the following python command
 
-    python setup.py sdist
+    python setup.py develop
 
 ##Basic Usage
 Synapse applications can be used for any purpose or the
