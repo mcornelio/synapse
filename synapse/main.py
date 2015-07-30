@@ -11,7 +11,7 @@ def exit(status=1):
 quit = exit
 
 def main():
-    sys.ps1, sys.ps2 = ('nx> ', '... ')
+    sys.ps1, sys.ps2 = ('sc> ', '... ')
     print nexus.title
     print nexus.exit_prompt
 

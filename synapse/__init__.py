@@ -68,8 +68,8 @@ class nexus_dictionary(collections.MutableMapping):
 
 nexus = nexus_dictionary()
 nexus.process_id = "%s-%d" % (socket.gethostname(), os.getpid())
-nexus.title = "Nexus Console Interface v1.0"
-nexus.prompts = {'ps1':'npi> ', 'ps2':'.... '}
+nexus.title = "Synapse Console Interface v1.0"
+nexus.prompts = {'ps1':'sc> ', 'ps2':'.... '}
 nexus.exit_prompt = "Use exit() plus Return to exit."
 nexus.dict_list = []
 nexus.log_file = 'nexus.log'
@@ -486,4 +486,5 @@ def nexus_server(port=nexus.http.port):
 def nexus_client(port=nexus.http.port, host=nexus.http.host):
 	return nexus_http_cell_engine(port,host)
 
-
+synapse_server = nexus_server
+synapse_client = nexus_client
