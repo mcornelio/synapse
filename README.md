@@ -10,7 +10,13 @@ not be aware of other synapse applications that need to
 access its internal cell dictionary.
 
 ##Installation
-python setup.py sdist
+To install the "synapse" python package:
+
+* Download or clone this repository
+* CD into the repository
+* Execute the following python command:
+
+    python setup.py sdist
 
 ##Basic Usage
 Synapse applications can be used for any purpose or the
