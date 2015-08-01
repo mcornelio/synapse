@@ -10,7 +10,7 @@ import collections
 import logging
 
 
-class synapse_client_interface(object):
+class nexus_client_interface(object):
 
 	def get_cell(self, key, value=None):
 		"""Returns the contents of the cell"""
@@ -28,19 +28,19 @@ class synapse_client_interface(object):
 		"""Set the contents of the cell"""
 		raise NotImplementedError("""set_prop(self, key, prop, value=None)""")
 
-def synapse_emergency_exit(status=1, msg=None, ):
+def nexus_emergency_exit(status=1, msg=None, ):
 	"""Force an exit"""
 	if msg:
 		print msg
 	os._exit(status)
 
 @decorator
-def synapse_trace_log_info(f, *args, **kw):
-	global synapse
-	synapse.logger.info("calling %s with args %s, %s" % (f.__name__, args, kw))
+def nexus_trace_log_info(f, *args, **kw):
+	global nexus
+	nexus.logger.info("calling %s with args %s, %s" % (f.__name__, args, kw))
 	return f(*args, **kw)
 
-class synapse_dictionary(collections.MutableMapping):
+class nexus_dictionary(collections.MutableMapping):
 	"""A dictionary that applies an arbitrary key-altering
 	function before accessing the keys"""
 
@@ -66,16 +66,16 @@ class synapse_dictionary(collections.MutableMapping):
 	def __keytransform__(self, key):
 		return key.lower()
 
-synapse = synapse_dictionary()
-synapse.process_id = "%s-%d" % (socket.gethostname(), os.getpid())
-synapse.title = "Synapse Console Interface v1.0"
-synapse.prompts = {'ps1':'sc> ', 'ps2':'.... '}
-synapse.exit_prompt = "Use exit() plus Return to exit."
-synapse.dict_list = []
-synapse.log_file = 'synapse.log'
-synapse.log_level = logging.WARNING
+nexus = nexus_dictionary()
+nexus.process_id = "%s-%d" % (socket.gethostname(), os.getpid())
+nexus.title = "Synapse Console Interface v1.0"
+nexus.prompts = {'ps1':'sc> ', 'ps2':'.... '}
+nexus.exit_prompt = "Use exit() plus Return to exit."
+nexus.dict_list = []
+nexus.log_file = 'synapse.log'
+nexus.log_level = logging.WARNING
 
-def synapse_logger(name, file=synapse.log_file, level=synapse.log_level):
+def nexus_logger(name, file=nexus.log_file, level=nexus.log_level):
 # create logger with 'name'
 	logger = logging.getLogger(name)
 	logger.setLevel(logging.DEBUG)
@@ -97,16 +97,16 @@ def synapse_logger(name, file=synapse.log_file, level=synapse.log_level):
 	logger.addHandler(ch)
 	return logger
 
-def synapse_log():
+def nexus_log():
 	global logger
 	return logger;
 
-class synapse_cell_dictionary(synapse_dictionary,synapse_client_interface):
-	"""synapse Dictionary with Formulas and Guards"""
+class nexus_cell_dictionary(nexus_dictionary,nexus_client_interface):
+	"""Nexus Dictionary with Formulas and Guards"""
 
-	__formulas__ = synapse_dictionary()
-	__guards__ = synapse_dictionary()
-	__props__ = synapse_dictionary()
+	__formulas__ = nexus_dictionary()
+	__guards__ = nexus_dictionary()
+	__props__ = nexus_dictionary()
 	__engine__ = None
 	
 	def set_formula(self, name, formula):
@@ -131,7 +131,7 @@ class synapse_cell_dictionary(synapse_dictionary,synapse_client_interface):
 	def set_prop(self, key, prop, value):
 		key = self.__keytransform__(key)
 		if not(key in self.__props__):
-			self.__props__[key] = synapse_dictionary()
+			self.__props__[key] = nexus_dictionary()
 		props = self.__props__[key]
 		props[prop] = value
 		return props[prop]
@@ -139,7 +139,7 @@ class synapse_cell_dictionary(synapse_dictionary,synapse_client_interface):
 	def get_prop(self, key, prop):
 		key = self.__keytransform__(key)
 		if not(key in self.__props__):
-			self.__props__[key] = synapse_dictionary()
+			self.__props__[key] = nexus_dictionary()
 		props = self.__props__[key]
 		if (prop in props):
 			return props[prop]
@@ -149,7 +149,7 @@ class synapse_cell_dictionary(synapse_dictionary,synapse_client_interface):
 	def get_props(self, key, prop):
 		key = self.__keytransform__(key)
 		if not(key in self.__props__):
-			self.__props__[key] = synapse_dictionary()
+			self.__props__[key] = nexus_dictionary()
 		return self.__props__[key]
 
 	def __getitem__(self, key, value=None):
@@ -176,25 +176,25 @@ class synapse_cell_dictionary(synapse_dictionary,synapse_client_interface):
 			return None
 		del self.store[self.__keytransform__(key)]
 
-def synapse_create_cell_engine():
+def nexus_create_cell_engine():
 	"""Create a new CellEngine"""
-	global synapse
-	tmp = synapse_cell_dictionary()
-	synapse.dict_list.append(tmp)
+	global nexus
+	tmp = nexus_cell_dictionary()
+	nexus.dict_list.append(tmp)
 	return tmp
 
-def synapse_append_dictionary(engine):
+def nexus_append_dictionary(engine):
 	"""Add the specified engine to the engine list"""
-	synapse.dict_list.append(engine)
+	nexus.dict_list.append(engine)
 
-def synapse_get_current_dictionary():
+def nexus_get_current_dictionary():
 	"""Return the current CellEngine"""
-	global synapse
-	last_index = len(synapse.dict_list) - 1
+	global nexus
+	last_index = len(nexus.dict_list) - 1
 	if last_index < 0:
-		return synapse_create_cell_engine()
+		return nexus_create_cell_engine()
 	else:
-		return synapse.dict_list[last_index]
+		return nexus.dict_list[last_index]
 
 def exit(status=0):
 	os._exit(status)
@@ -209,7 +209,7 @@ def wait_for_ctrlc(seconds=1):
 	except KeyboardInterrupt:
 		pass
 
-class synapse_cell_engine(object):
+class nexus_cell_engine(object):
 
 	def __set(self,key,value):
 		self.__dict__[key] = value
@@ -220,9 +220,9 @@ class synapse_cell_engine(object):
 	def __init__(self,cells=None):
 
 		if not cells:
-			cells = synapse_get_current_dictionary()
-		if not isinstance(cells,synapse_client_interface):
-			raise RuntimeError("%s is not a subclass of synapse_AbstractClient" % type(cells))
+			cells = nexus_get_current_dictionary()
+		if not isinstance(cells,nexus_client_interface):
+			raise RuntimeError("%s is not a subclass of NEXUS_AbstractClient" % type(cells))
 		self.__set('__cells', cells)
 
 	def cells(self):
@@ -267,23 +267,23 @@ class synapse_cell_engine(object):
 	def close():
 		pass
 	
-def synapse_help():
+def nexus_help():
 	print string.replace("""
 	#++
-	# synapse Adapters can act as servers or clients
+	# Nexus Adapters can act as servers or clients
 	# or both servers and clients simultaneously
 	#--
 	=============( Server )==============
-	# Start synapse http service
-	c = synapse_server(port=port, host=host)
+	# Start nexus http service
+	c = nexus_server(port=port, host=host)
 	
 	# Set an get arbitrary cell value
 	c.mycell = 3.14159
 	my_value = my_eng.mycell
 	
 	=============( Client )==============
-	# Connect to remote synapse http service
-	r = synapse_connect(port=port, host=host)
+	# Connect to remote nexus http service
+	r = nexus_connect(port=port, host=host)
 
 	# Get arbitrary cell velues remotely
 	v = r.mycell
@@ -293,11 +293,11 @@ def synapse_help():
 	
 	""", '\t', '')
 	
-synapse.dict = synapse_get_current_dictionary
-synapse.cells = synapse_cell_engine
-synapse.help = synapse_help
-synapse_dict = synapse_get_current_dictionary
-synapse_cells = synapse_cell_engine
+nexus.dict = nexus_get_current_dictionary
+nexus.cells = nexus_cell_engine
+nexus.help = nexus_help
+nexus_dict = nexus_get_current_dictionary
+nexus_cells = nexus_cell_engine
 
 #############################
 
@@ -306,24 +306,24 @@ import json
 import requests
 import threading
 
-synapse.http = synapse_dictionary()
-synapse.http.port = 8888
-synapse.http.host = "127.0.0.1"
+nexus.http = nexus_dictionary()
+nexus.http.port = 8888
+nexus.http.host = "127.0.0.1"
 
-logger = synapse_logger('http')
+logger = nexus_logger('http')
 protocol = 'http'
 
 
-class synapse_http_root_service(object):
+class nexus_http_root_service(object):
 
-	def __init__(self,title="synapse Web Service"):
+	def __init__(self,title="Nexus Web Service"):
 		self.__title = title
 
 	@cherrypy.expose
 	def index(self):
 		return self.__title
 
-class synapse_http_rest_service(object):
+class nexus_http_rest_service(object):
 
 	exposed = True
 	name = 'rest'
@@ -335,7 +335,7 @@ class synapse_http_rest_service(object):
 		'tools.response_headers.headers': [('Content-Type', 'application/json')]
 	}
 
-	__cells = synapse_get_current_dictionary()
+	__cells = nexus_get_current_dictionary()
 
 	def __init__(self,name=None, conf=None):
 		if name:
@@ -387,17 +387,17 @@ class synapse_http_rest_service(object):
 		jdata = json.loads(data)
 		return {"from":"delete", "data":jdata}
 
-class synapse_http_server(object):
-	"""Starts a local synapse HTTP Web Service."""
+class nexus_http_server(object):
+	"""Starts a local Nexus HTTP Web Service."""
 
 	thread = None
 	root = None
 	conf = None
 	rest = None
 
-	def __init__(self,port=synapse.http.port,title='synapse Web Service',log_screen=False,services=[]):
-		self.root = synapse_http_root_service("%s on port %d" % (title, port))
-		self.rest = synapse_http_rest_service('rest')
+	def __init__(self,port=nexus.http.port,title='Nexus Web Service',log_screen=False,services=[]):
+		self.root = nexus_http_root_service("%s on port %d" % (title, port))
+		self.rest = nexus_http_rest_service('rest')
 		self.root.__setattr__(self.rest.name, self.rest)
 
 		self.conf = {
@@ -413,7 +413,7 @@ class synapse_http_server(object):
 			self.conf.__setitem__(svc.vdir, svc.conf)
 
 		def worker():
-			#cherrypy.log.access_file - 'synapse.http.log'
+			#cherrypy.log.access_file - 'nexus.http.log'
 			cherrypy.log.access_log.level = logging.INFO
 			cherrypy.log.error_log.level = logging.ERROR
 			cherrypy.log.screen = log_screen
@@ -425,14 +425,14 @@ class synapse_http_server(object):
 		self.thread.daemon = True
 		self.thread.start()
 
-class synapse_http_client(synapse_client_interface):
+class nexus_http_client(nexus_client_interface):
 	"""Creates a new HTTP Client"""
 
 	__url__ = None
 	response = None
 	trust_env = False
 
-	def __init__(self, port=synapse.http.port, host=synapse.http.host, trust_env=False):
+	def __init__(self, port=nexus.http.port, host=nexus.http.host, trust_env=False):
 		self.trust_env = trust_env
 		if not ('NO_PROXY' in os.environ):
 			os.environ['NO_PROXY'] = "127.0.0.1,localhost,%s" % socket.gethostname()
@@ -472,16 +472,19 @@ class synapse_http_client(synapse_client_interface):
 	def RaiseError(self):
 		raise requests.exceptions.HTTPError(404)
 
-def synapse_http_cell_engine(port=synapse.http.port, host=synapse.http.host, trust_env=False):
+def nexus_http_cell_engine(port=nexus.http.port, host=nexus.http.host, trust_env=False):
 	"""Returns a cell engine from a new HTTP_Client"""
-	return synapse_cell_engine(synapse_http_client(port=port, host=host, trust_env=trust_env))
+	return nexus_cell_engine(nexus_http_client(port=port, host=host, trust_env=trust_env))
 
-synapse.http.service = synapse_http_server
-synapse.http.cells = synapse_http_cell_engine
+nexus.http.service = nexus_http_server
+nexus.http.cells = nexus_http_cell_engine
 
-def synapse_server(port=synapse.http.port):
-	synapse_http_server(port)
-	return synapse_cell_engine()
+def nexus_server(port=nexus.http.port):
+	nexus_http_server(port)
+	return nexus_cell_engine()
 
-def synapse_client(port=synapse.http.port, host=synapse.http.host):
-	return synapse_http_cell_engine(port,host)
+def nexus_client(port=nexus.http.port, host=nexus.http.host):
+	return nexus_http_cell_engine(port,host)
+
+synapse_server = nexus_server
+synapse_client = nexus_client
