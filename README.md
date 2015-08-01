@@ -18,16 +18,7 @@ To install the "synapse" python package:
 
     python setup.py install
 
-##Basic Usage
-Synapse applications can be used for any purpose or the
-synapse package can be used as a communication and data
-sharing framework for any application that would like to
-use a distibuted cell framework.
-
-This section outlines the most basic usage of the package:
-cooperating synapse client and server applications--setting
-and getting cell values.
-
+##Starting a synapse application
 To start an interactive "synapse" application:
 
     python -i -m synapse.main
@@ -39,12 +30,51 @@ an interactive prompt will be displayed.
     Use exit() plus Return to exit.
     sc>
 
+You may also specify a list of python script files
+to be executed following the -m python.main argument.
+For example:
+
+    python -i -m synapse.main myscript1.py myscript2.py myscriptn.py
+
+These scripts are executed in the '__main__' context.
+
+##Basic Usage
+Synapse applications can be used for any purpose or the
+synapse package can be used as a communication and data
+sharing framework for any application that would like to
+use a distibuted cell framework.
+
+This section outlines the most basic usage of the package:
+cooperating synapse client and server applications--setting
+and getting cell values.
+
+At its core, synapse is a dictionary--a dictionary with super powers--which
+we will describe later.
+
+Like a dictionary, you may get and set the items in the dictionary.
+In synapse, the dictionary items are referred to as 
+cells.  Synapse dictionary cells are very similar to
+find in a typical spreadsheet.  You may set and get
+the cells in a synapse dictionary after instantiating
+a synapse dictionary.
+
+    sc> c = synapse_cells()
+    sc> import math
+    sc> c.pi = math.pi
+
+Like a spreadsheet, you may attach formulas or guards to 
+a synapse cell.  When a synapse is
+read, and it has an attached formula, the formula is
+evaluated to determine the value of the item.  You may
+attach a formula to a cell using the set_cell method.
+For example:
+
+    sc> c.set_formula('pi360', lambda k,v : 
+
 At this point, you may start the synapse server to create a cell dictionary and
 make your cells available to synapse clients.
 
     sc> c = synapse_server(2500)
-    sc> import math
-    sc> c.pi = math.pi
 
 You may access a server's cells from another synapse application that
 will act as a client to the synapse server. The synapse client can
