@@ -19,6 +19,9 @@ setup(name='synapse',
       install_requires=[
           'cherrypy', 'requests', 'decorator'
       ],
+      scripts=[
+            'scripts/synapse'
+      ],
       classifiers=[
             "Development Status :: 4 - Beta",
             "Environment :: Console",
