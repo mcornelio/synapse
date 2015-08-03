@@ -39,13 +39,13 @@ For example:
 These scripts are executed in the '__main__' context.
 
 ##What Is Synapse
-At its core, synapse is a console application that wraps virtual spreadsheet
+At its core, synapse is a console application that wraps a virtual spreadsheet
 with named cells.
 
 You may get and set named cells within the spreadsheet.
-Synapse cells are very similar to find in a typical spreadsheet.  
+Synapse cells are very similar to cells in a typical spreadsheet.  
 You may set and get the cells in a synapse spreadsheet after instantiating
-a synapse dictionary.
+a synapse spreadsheet.
 
     sc> c = synapse_spreadsheet()
     sc> import math
@@ -53,7 +53,7 @@ a synapse dictionary.
     sc> mypi = c.get_cell('pi')
 
 ##Cell Values
-Please note that cell values must be a JSON encodable value.  That is:
+A cell may contain any JSON encodable value.  That is:
 * None
 * numbers (integers or floats)
 * strings
@@ -66,6 +66,7 @@ a synapse cell.  When a synapse is
 read, and it has an attached formula, the formula is
 evaluated to determine the value of the item.  You may
 attach a formula to a cell using the set_cell method.
+
 You may use either a lambda expression or a defined function
 as a formula.  Formulas always take 2 arguments, a key and a value.
 For example:
@@ -80,8 +81,11 @@ For example:
 ###Guards
 Unlike a spreadsheet, you may attach guards to a synapse cell.
 Guards are used to validate a value before setting a cell's value.
+
 Guards are defined in a similar fashion to formulas.  That is,
-guards always take two arguments, a key and a value:  For example:
+guards may be defined as either a function or lambda expression that
+takes two arguments, a key and a value.  The guard should either
+(1) return a value which will be set as the cell's value, or (2) raise an error.
 
     sc> def oddOnly(key, value):
     ...     if value % 2:
