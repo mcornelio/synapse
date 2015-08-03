@@ -97,7 +97,7 @@ takes two arguments, a key and a value.  The guard should either
     sc> c.oddOnly = 3
     sc> print c.oddOnly
     3
-    sc> c.onnOnly = 4
+    sc> c.oddOnly = 4
     RuntimeError: not odd
 
 ###Servers
