@@ -38,44 +38,71 @@ For example:
 
 These scripts are executed in the '__main__' context.
 
-##Basic Usage
-Synapse applications can be used for any purpose or the
-synapse package can be used as a communication and data
-sharing framework for any application that would like to
-use a distibuted cell framework.
+##What Is Synapse
+At its core, synapse is a console application that wraps virtual spreadsheet
+with named cells.
 
-This section outlines the most basic usage of the package:
-cooperating synapse client and server applications--setting
-and getting cell values.
-
-At its core, synapse is a dictionary--a dictionary with super powers--which
-we will describe later.
-
-Like a dictionary, you may get and set the items in the dictionary.
-In synapse, the dictionary items are referred to as 
-cells.  Synapse dictionary cells are very similar to
-find in a typical spreadsheet.  You may set and get
-the cells in a synapse dictionary after instantiating
+You may get and set named cells within the spreadsheet.
+Synapse cells are very similar to find in a typical spreadsheet.  
+You may set and get the cells in a synapse spreadsheet after instantiating
 a synapse dictionary.
 
-    sc> c = synapse_cells()
+    sc> c = synapse_spreadsheet()
     sc> import math
-    sc> c.pi = math.pi
+    sc> c.set_cell('pi', math.pi)
+    sc> mypi = c.get_cell('pi')
 
-Like a spreadsheet, you may attach formulas or guards to 
+##Cell Values
+Please note that cell values must be a JSON encodable value.  That is:
+* None
+* numbers (integers or floats)
+* strings
+* lists or arrays enclosed in square brackets: [1,2,3]
+* objects enclosed in curly braces: {'a':1, 'b':2, 'c':'apple'}
+
+###Formulas
+Like a spreadsheet, you may attach formulas to
 a synapse cell.  When a synapse is
 read, and it has an attached formula, the formula is
 evaluated to determine the value of the item.  You may
 attach a formula to a cell using the set_cell method.
+You may use either a lambda expression or a defined function
+as a formula.  Formulas always take 2 arguments, a key and a value.
 For example:
 
-    sc> c.set_formula('pi360', lambda k,v : 
+    sc> c.set_formula('pi360', lambda k,v : math.pi * 360)
 
-At this point, you may start the synapse server to create a cell dictionary and
-make your cells available to synapse clients.
+Now, when you access the cell, the formula will be evaluated and its value returned.
+For example:
+
+    sc> theValue = c.pi360
+
+###Guards
+Unlike a spreadsheet, you may attach guards to a synapse cell.
+Guards are used to validate a value before setting a cell's value.
+Guards are defined in a similar fashion to formulas.  That is,
+guards always take two arguments, a key and a value:  For example:
+
+    sc> def oddOnly(key, value):
+    ...     if value % 2:
+    ...         return value
+    ...     else:
+    ...         raise RuntimeError("not odd")
+    ...
+    sc> c.set_guard('oddOnly', oddOnly)
+    sc> c.oddOnly = 3
+    sc> print c.oddOnly
+    3
+    sc> c.onnOnly = 4
+    RuntimeError: not odd
+
+###Servers
+Synapse applications can export their spreadsheets by acting as a server.
+To do this, use the synapse_server function and specify a port number.
 
     sc> c = synapse_server(2500)
 
+###Clients
 You may access a server's cells from another synapse application that
 will act as a client to the synapse server. The synapse client can
 access the server's cells as if they were locally defined within the
@@ -98,14 +125,6 @@ If your server is on another host, you may specify a hostname or IP address.
 
 This will connect to the synapse server on '192.168.0.35' on port 2500.
 Connections may be bi-directional.  That is, a synapse application may be both a server and client.
-
-##Cell Values
-Please note that cell values must be a JSON encodable value.  That is:
-* None
-* numbers (integers or floats)
-* strings
-* lists or arrays enclosed in square brackets: [1,2,3]
-* objects enclosed in curly braces: {'a':1, 'b':2, 'c':'apple'}
 
 ##Programming Cells Using Formulas
 Like spreadsheets, cells may have a formula that is evaluated when the cell value is requested.

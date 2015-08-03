@@ -298,6 +298,7 @@ synapse.cells = synapse_cell_engine
 synapse.help = synapse_help
 synapse_dict = synapse_get_current_dictionary
 synapse_cells = synapse_cell_engine
+synapse_spreadsheet = synapse_cell_engine
 
 #############################
 
