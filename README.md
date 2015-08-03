@@ -69,9 +69,19 @@ attach a formula to a cell using the set_cell method.
 
 You may use either a lambda expression or a defined function
 as a formula.  Formulas always take 2 arguments, a key and a value.
-For example:
+For example, the following function defines a formula:
 
-    sc> c.set_formula('pi360', lambda k,v : math.pi * 360)
+    sc> def pi360_formula(key,value=None):
+    sc>     return math.pi * 360
+
+The following lambda expression also defines a formula:
+
+    sc> pi360_formula = lambda key,value : math.pi * 360
+
+Once the formula is defined, you can attach the formula to a cell
+with the set_formula method for the spreadsheet.
+
+    sc> c.set_cell('pi360', pi360_formula)
 
 Now, when you access the cell, the formula will be evaluated and its value returned.
 For example:
@@ -87,13 +97,13 @@ guards may be defined as either a function or lambda expression that
 takes two arguments, a key and a value.  The guard should either
 (1) return a value which will be set as the cell's value, or (2) raise an error.
 
-    sc> def oddOnly(key, value):
+    sc> def oddOnly_Guard(key, value):
     ...     if value % 2:
     ...         return value
     ...     else:
     ...         raise RuntimeError("not odd")
     ...
-    sc> c.set_guard('oddOnly', oddOnly)
+    sc> c.set_guard('oddOnly', oddOnly_Guard)
     sc> c.oddOnly = 3
     sc> print c.oddOnly
     3
@@ -106,8 +116,12 @@ To do this, use the synapse_server function and specify a port number.
 
     sc> c = synapse_server(2500)
 
+Please note, formulas and guards can only be defined on the server side spreadsheet.
+That is, you may only define formulas and guards for the spreadsheet
+in the current synapse application.
+
 ###Clients
-You may access a server's cells from another synapse application that
+You may get and set a server's cells from another synapse application that
 will act as a client to the synapse server. The synapse client can
 access the server's cells as if they were locally defined within the
 client.
@@ -130,28 +144,21 @@ If your server is on another host, you may specify a hostname or IP address.
 This will connect to the synapse server on '192.168.0.35' on port 2500.
 Connections may be bi-directional.  That is, a synapse application may be both a server and client.
 
-##Programming Cells Using Formulas
-Like spreadsheets, cells may have a formula that is evaluated when the cell value is requested.
-_Formulas may be created by a server on its own cells only_.  A formula is specified as either a
-"def'd" function or a lambda expression that returns a value.
+Please note, you cannot set formulas or guards on a remote synapse application server.
 
-Formulas receive 2 parameters when called: a key (the name of the cell) and an optional value.
-For example, the following function defines a formula:
+##Why Synapse
+Synapse applications are designed to be a normal console application that wraps
+a hardware or software device and exposes its capabilities as the values
+of one or more cells in a virtual spreadsheet.
 
-    def pi360_formula(key,value=None):
-        return math.pi * 360
+Typically, this is done by formulas and guards that perform a side-effect
+as a result of getting or setting a cell.
 
-The following lambda expression also defines a formula:
+As a trivial example, a synapse application could be defined that maintains the
+status of a remote computer's disk or memory utilization.  A formula
+could be attached to a cell in a synapse application that when read would return the amount of
+bytes available on a particular device or within a particular directory.
 
-    pi360_formula = lambda key,value : math.pi * 360
-
-Using the "c" server cell dictionary from the example above, 
-we can set a formula for a cell using the 'set_formula' method of the cell dictionary:
-
-    c.set_formula('pi360', pi360_formula)
-
-When the cell is referenced, the formula is evaluated and its result returned as the value of the cell.
-For example:
-
-    x = c.pi360 // evaluate the formula and return the formula's result for the pi360 cell
-
+Synapse does away with complex RPC, SOAP, or HTTP protocols and allows the user
+to treat remote synapse application spreadsheets as though they were local to
+their application.
