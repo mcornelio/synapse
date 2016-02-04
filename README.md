@@ -81,7 +81,7 @@ The following lambda expression also defines a formula:
 Once the formula is defined, you can attach the formula to a cell
 with the set_formula method for the spreadsheet.
 
-    sc> c.set_cell('pi360', pi360_formula)
+    sc> c.set_formula('pi360', pi360_formula)
 
 Now, when you access the cell, the formula will be evaluated and its value returned.
 For example:

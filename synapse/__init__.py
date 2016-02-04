@@ -4,8 +4,6 @@ import time
 import logging
 import socket
 import string
-from urlparse import urlparse
-from decorator import decorator
 import collections
 import logging
 
@@ -34,7 +32,6 @@ def synapse_emergency_exit(status=1, msg=None, ):
 		print msg
 	os._exit(status)
 
-@decorator
 def synapse_trace_log_info(f, *args, **kw):
 	global synapse
 	synapse.logger.info("calling %s with args %s, %s" % (f.__name__, args, kw))

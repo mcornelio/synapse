@@ -4,7 +4,7 @@ import sys
 from . import *
 
 def exit(status=1):
-    """Nexus Exit Routine"""
+    """Synapse Exit Routine"""
     print "good_bye"
     os._exit(status)
 
@@ -12,8 +12,8 @@ quit = exit
 
 def main():
     sys.ps1, sys.ps2 = ('sc> ', '... ')
-    print nexus.title
-    print nexus.exit_prompt
+    print synapse.title
+    print synapse.exit_prompt
 
     #sys.tracebacklimit = 0
 
