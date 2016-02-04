@@ -107,25 +107,56 @@ class synapse_cell_dictionary(synapse_dictionary,synapse_client_interface):
 	__engine__ = None
 	
 	def set_formula(self, name, formula):
+		"""
+		Sets the formula function for a cell.
+		:param name: the name of the cell as string
+		:param formula: a function that takes (key,value) where key=cell, value an optional value
+		:return: None
+		"""
 		if formula == None:
 			del self.__formulas__[name]
 		else:
 			self.__formulas__[name] = formula
 
 	def set_guard(self, name, guard):
+		"""
+		Sets a guard function for a cell.
+		:param name: the name of the cell as string
+		:param guard: a function that takes (key,value) where key=cell, and value=value for the cell
+		:return: None
+		"""
 		if guard == None:
 			del self.__guards__[name]
 		else:
 			self.__guards__[name] = guard
 
 	def set_cell(self, key, value):
+		"""
+		Set the value of a cell
+		:param key: the name of the cell
+		:param value: the value for the cell
+		:return: the current value cell
+		"""
 		self.__setitem__(key, value)
 		return self.__getitem__(key, value)
 
 	def get_cell(self, key, value=None):
+		"""
+		Returns the current value of a cell
+		:param key: the name of the cell as a string
+		:param value: an optional value that may be passed to the cell's formula
+		:return: the current value of the cell
+		"""
 		return self.__getitem__(key, value)
 
 	def set_prop(self, key, prop, value):
+		"""
+		Sets a cell's named property to a value
+		:param key: the name of the cell as a string
+		:param prop: the name of the property as a string
+		:param value: the current value of the property
+		:return:
+		"""
 		key = self.__keytransform__(key)
 		if not(key in self.__props__):
 			self.__props__[key] = synapse_dictionary()
@@ -134,6 +165,12 @@ class synapse_cell_dictionary(synapse_dictionary,synapse_client_interface):
 		return props[prop]
 
 	def get_prop(self, key, prop):
+		"""
+		Returns the current value of a cell's property
+		:param key: the name of the cell as a string
+		:param prop: the name of the property as a string
+		:return: the current value of the property
+		"""
 		key = self.__keytransform__(key)
 		if not(key in self.__props__):
 			self.__props__[key] = synapse_dictionary()
@@ -143,13 +180,25 @@ class synapse_cell_dictionary(synapse_dictionary,synapse_client_interface):
 		else:
 			return None
 
-	def get_props(self, key, prop):
+	def get_props(self, key):
+		"""
+		Returns all the properties of a cell
+		:param key: the name of the cell as string
+		:param prop:
+		:return: all the properties as a string
+		"""
 		key = self.__keytransform__(key)
 		if not(key in self.__props__):
 			self.__props__[key] = synapse_dictionary()
 		return self.__props__[key]
 
 	def __getitem__(self, key, value=None):
+		"""
+		Returns the value of a cell when referenced as an item
+		:param key: the name of the cell as a string
+		:param value: an optional value
+		:return: the value of the cell
+		"""
 		key = self.__keytransform__(key)
 		if key in self.__formulas__:
 			self.store[key] = self.__formulas__[key](key,value)
@@ -158,12 +207,23 @@ class synapse_cell_dictionary(synapse_dictionary,synapse_client_interface):
 		return self.store[key]
 
 	def __setitem__(self, key, value):
+		"""
+		Sets the value of a cell when referenced as an item
+		:param key: the name of the cell as a string
+		:param value: the new value for the cell
+		:return: the value of the cell
+		"""
 		if key in self.__guards__:
 			self.store[key] = self.__guards__[key](key,value)
 		else:
 			self.store[self.__keytransform__(key)] = value
 
 	def __delitem__(self, key):
+		"""
+		Deletes a cell when referenced as an item
+		:param key: the name of the cell as a string
+		:return: None
+		"""
 		key = self.__keytransform__(key)
 		if key in self.__formulas__:
 			del self.__formulas__[key]
@@ -194,12 +254,27 @@ def synapse_get_current_dictionary():
 		return synapse.dict_list[last_index]
 
 def exit(status=0):
+	"""
+	Exit Synapse
+	:param status: the status to return to the shell
+	:return: does not return
+	"""
 	os._exit(status)
 
 def quit(status=0):
+	"""
+	Exit Synapse
+	:param status: the status to return to the shell
+	:return: does not return
+	"""
 	exit(status)
 
 def wait_for_ctrlc(seconds=1):
+	"""
+	Wait for ctrlc interrupt from the board
+	:param seconds: sleep time per loop in seconds
+	:return:
+	"""
 	try:
 		while True:
 			time.sleep(seconds)
@@ -207,15 +282,31 @@ def wait_for_ctrlc(seconds=1):
 		pass
 
 class synapse_cell_engine(object):
-
+	"""
+	The Synapse Cell Engine class.
+	"""
 	def __set(self,key,value):
+		"""
+		Sets the value of a cell
+		:param key: the name of the cell as a string
+		:param value: the value for the cell
+		:return: None
+		"""
 		self.__dict__[key] = value
 
 	def __get(self,key):
+		"""
+		Returns the value of a cell
+		:param key: the name of the cell as a string
+		:return: the value of the cell
+		"""
 		return self.__dict__[key]
 
 	def __init__(self,cells=None):
-
+		"""
+		Constructor for a Synapse Cell Engine
+		:param cells: a synapse_client_interface instance. If not specified, set to the current synapse_dictionary
+		"""
 		if not cells:
 			cells = synapse_get_current_dictionary()
 		if not isinstance(cells,synapse_client_interface):
@@ -223,24 +314,64 @@ class synapse_cell_engine(object):
 		self.__set('__cells', cells)
 
 	def cells(self):
+		"""
+		Returns the cell dictionary for this instance
+		"""
 		return self.__get('__cells')
 	
 	def get_cell(self,key,value=None):
+		"""
+		Returns the current value of a cell
+		:param key: the name of the cell as a string
+		:param value: an optional value that may be passed to the cell's formula
+		:return: the current value of the cell
+		"""
 		return self.__get('__cells').get_cell(key,value)
 	
 	def set_cell(self,key,value=None):
+		"""
+		Set the value of a cell
+		:param key: the name of the cell
+		:param value: the value for the cell
+		:return: the current value cell
+		"""
 		return self.__get('__cells').set_cell(key,value)
 
 	def set_formula(self,key,formula):
+		"""
+		Sets the formula function for a cell.
+		:param name: the name of the cell as string
+		:param formula: a function that takes (key,value) where key=cell, value an optional value
+		:return: None
+		"""
 		return self.cells().set_formula(key,formula)
 
 	def set_guard(self,key,guard):
+		"""
+		Sets a guard function for a cell.
+		:param name: the name of the cell as string
+		:param guard: a function that takes (key,value) where key=cell, and value=value for the cell
+		:return: None
+		"""
 		return self.cells().set_guard(key,guard)
 	
 	def set_prop(self,key,prop,value):
+		"""
+		Sets a cell's named property to a value
+		:param key: the name of the cell as a string
+		:param prop: the name of the property as a string
+		:param value: the current value of the property
+		:return:
+		"""
 		return self.cells().set_prop(key,prop,value)
 	
 	def get_prop(self,key,prop):
+		"""
+		Returns the current value of a cell's property
+		:param key: the name of the cell as a string
+		:param prop: the name of the property as a string
+		:return: the current value of the property
+		"""
 		return self.cells().get_prop(key,prop)
 	
 	def __delattr__(self,key):
@@ -253,12 +384,27 @@ class synapse_cell_engine(object):
 		return self.__get('__cells').set_cell(key, value)
 
 	def __getitem__(self, key):
+		"""
+		Returns the value of a cell when referenced as an item
+		:param key: the name of the cell as a string
+		:param value: an optional value
+		:return: the value of the cell
+		"""
 		return self.__get('__cells').get_cell(key)
 
 	def __setitem__(self, key, value):
+		"""
+		Sets the value of a cell when referenced as an item
+		:param key: the name of the cell as a string
+		:param value: the new value for the cell
+		:return: the value of the cell
+		"""
 		return self.__get('__cells').set_cell(key, value)
 
 	def __len__(self):
+		"""
+		Returns the number of cells in the cell engine.
+		"""
 		return len(self.cells())
 	
 	def close():
@@ -335,7 +481,9 @@ class synapse_http_rest_service(object):
 
 	__cells = synapse_get_current_dictionary()
 
-	def __init__(self,name=None, conf=None):
+	def __init__(self,name=None, conf=None, cells=None):
+		if cells:
+			__cells = cells
 		if name:
 			self.name = name
 		if conf:
@@ -392,10 +540,12 @@ class synapse_http_server(object):
 	root = None
 	conf = None
 	rest = None
+	cells = None
 
-	def __init__(self,port=synapse.http.port,title='synapse Web Service',log_screen=False,services=[]):
+	def __init__(self,port=synapse.http.port,cells=None,title='synapse Web Service',log_screen=False,services=[]):
+		self.cells = cells or synapse_get_current_dictionary()
 		self.root = synapse_http_root_service("%s on port %d" % (title, port))
-		self.rest = synapse_http_rest_service('rest')
+		self.rest = synapse_http_rest_service(name='rest',cells=cells)
 		self.root.__setattr__(self.rest.name, self.rest)
 
 		self.conf = {
@@ -466,6 +616,30 @@ class synapse_http_client(synapse_client_interface):
 		data = {'action':'set_prop', 'key':key, 'prop':prop, 'value':value}
 		self.response = requests.post(self.__url__, data={'data':json.dumps(data)})
 		return self.__response()
+
+	def __getattr__(self, key):
+		return self.get_cell(key)
+
+	def __setattr__(self, key, value):
+		return self.set_cell(key, value)
+
+	def __getitem__(self, key):
+		"""
+		Returns the value of a cell when referenced as an item
+		:param key: the name of the cell as a string
+		:param value: an optional value
+		:return: the value of the cell
+		"""
+		return self.get_cell(key)
+
+	def __setitem__(self, key, value):
+		"""
+		Sets the value of a cell when referenced as an item
+		:param key: the name of the cell as a string
+		:param value: the new value for the cell
+		:return: the value of the cell
+		"""
+		return self.set_cell(key, value)
 
 	def RaiseError(self):
 		raise requests.exceptions.HTTPError(404)
