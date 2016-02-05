@@ -86,7 +86,7 @@ with the set_formula method for the spreadsheet.
 Now, when you access the cell, the formula will be evaluated and its value returned.
 For example:
 
-    sc> theValue = c.pi360
+    sc> theValue = c.get_cell('pi360')
 
 ###Guards
 Unlike a spreadsheet, you may attach guards to a synapse cell.
@@ -104,17 +104,17 @@ takes two arguments, a key and a value.  The guard should either
     ...         raise RuntimeError("not odd")
     ...
     sc> c.set_guard('oddOnly', oddOnly_Guard)
-    sc> c.oddOnly = 3
-    sc> print c.oddOnly
+    sc> c.set_cell('oddOnly', 3)
+    sc> print c.get_cell('oddOnly')
     3
-    sc> c.oddOnly = 4
+    sc> c.set_cell('oddOnly', 4)
     RuntimeError: not odd
 
 ###Servers
 Synapse applications can export their spreadsheets by acting as a server.
 To do this, use the synapse_server function and specify a port number.
 
-    sc> c = synapse_server(2500)
+    sc> synapse_server(2500)
 
 Please note, formulas and guards can only be defined on the server side spreadsheet.
 That is, you may only define formulas and guards for the spreadsheet
@@ -132,14 +132,14 @@ To see this in action, start another interactive synapse application and connect
     Synapse Console Interface v1.0
     Use exit() plus Return to exit.
     sc> s = synapse_client(2500)
-    sc> s.pi
+    sc> s.get_cell('pi')
     3.141592653589793
 
 Notice how the client has a real-time view into the server's data.
 Each synapse server should have a unique port number for a specific host.
 If your server is on another host, you may specify a hostname or IP address.
 
-    sc> r = synapse_client(2500, '192.168.0.35');
+    sc> r = synapse_client(port=2500, host='192.168.0.35');
 
 This will connect to the synapse server on '192.168.0.35' on port 2500.
 Connections may be bi-directional.  That is, a synapse application may be both a server and client.

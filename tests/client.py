@@ -1,6 +1,5 @@
 from synapse import *
-r0 = synapse_http_client(port=2500)
-r1 = synapse_http_client(port=2501)
-r0.get_cell('pi')
-r1.get_cell('e')
+r = synapse_http_client(port=2500)
+x = synapse_http_client(port=2500,context='xray')
+print("root.pi=%g, xray.e=%g" % (r['pi'], x['e']))
 

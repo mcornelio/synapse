@@ -1,6 +1,11 @@
 __author__ = 'mcornelio'
 
 from setuptools import setup
+from datetime import datetime
+
+def version_string():
+    now = datetime.now()
+    return "%d.%d.%d" % (now.year - 2015, now.month-1, now.day-1)
 
 readme = open('README.md', 'r')
 README_TEXT = readme.read()
@@ -8,7 +13,7 @@ readme.close()
 
 
 setup(name='synapse',
-      version='1.0',
+      version=version_string(),
       description='Cell-based device adapter',
       long_description=README_TEXT,
       url='http://github.com/cornelio/synapse',

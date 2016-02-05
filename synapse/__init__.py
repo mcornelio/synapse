@@ -69,6 +69,9 @@ synapse.title = "Synapse Console Interface v1.0"
 synapse.prompts = {'ps1':'sc> ', 'ps2':'.... '}
 synapse.exit_prompt = "Use exit() plus Return to exit."
 synapse.dict_list = []
+synapse.dicts = {}
+synapse.current_cell_engine_context = None
+synapse.current_cell_engine = None
 synapse.log_file = 'synapse.log'
 synapse.log_level = logging.WARNING
 
@@ -233,25 +236,15 @@ class synapse_cell_dictionary(synapse_dictionary,synapse_client_interface):
 			return None
 		del self.store[self.__keytransform__(key)]
 
-def synapse_create_cell_engine():
+def synapse_get_cell_engine(context='root'):
 	"""Create a new CellEngine"""
 	global synapse
-	tmp = synapse_cell_dictionary()
-	synapse.dict_list.append(tmp)
-	return tmp
-
-def synapse_append_dictionary(engine):
-	"""Add the specified engine to the engine list"""
-	synapse.dict_list.append(engine)
-
-def synapse_get_current_dictionary():
-	"""Return the current CellEngine"""
-	global synapse
-	last_index = len(synapse.dict_list) - 1
-	if last_index < 0:
-		return synapse_create_cell_engine()
-	else:
-		return synapse.dict_list[last_index]
+	lname = context.lower()
+	synapse.current_cell_engine_context = lname
+	if lname in synapse.dicts:
+		return synapse.dicts[lname]
+	synapse.current_cell_engine = synapse.dicts[lname] = synapse_cell_dictionary()
+	return synapse.current_cell_engine
 
 def exit(status=0):
 	"""
@@ -308,7 +301,7 @@ class synapse_cell_engine(object):
 		:param cells: a synapse_client_interface instance. If not specified, set to the current synapse_dictionary
 		"""
 		if not cells:
-			cells = synapse_get_current_dictionary()
+			cells = synapse_get_cell_engine()
 		if not isinstance(cells,synapse_client_interface):
 			raise RuntimeError("%s is not a subclass of synapse_AbstractClient" % type(cells))
 		self.__set('__cells', cells)
@@ -407,7 +400,7 @@ class synapse_cell_engine(object):
 		"""
 		return len(self.cells())
 	
-	def close():
+	def close(self):
 		pass
 	
 def synapse_help():
@@ -436,12 +429,11 @@ def synapse_help():
 	
 	""", '\t', '')
 	
-synapse.dict = synapse_get_current_dictionary
 synapse.cells = synapse_cell_engine
 synapse.help = synapse_help
-synapse_dict = synapse_get_current_dictionary
+synapse_dict = synapse_dictionary
 synapse_cells = synapse_cell_engine
-synapse_spreadsheet = synapse_cell_engine
+synapse_spreadsheet = synapse_get_cell_engine
 
 #############################
 
@@ -479,7 +471,7 @@ class synapse_http_rest_service(object):
 		'tools.response_headers.headers': [('Content-Type', 'application/json')]
 	}
 
-	__cells = synapse_get_current_dictionary()
+	__cells = synapse_get_cell_engine()
 
 	def __init__(self,name=None, conf=None, cells=None):
 		if cells:
@@ -495,6 +487,11 @@ class synapse_http_rest_service(object):
 		key = j['key']
 		prop = j.get('prop')
 		value = j.get('value')
+		context = j.get('context')
+		if not context or not context in synapse.dicts:
+			raise cherrypy.HTTPError("400 Bad Request", "Invalid Context specified (%s)" % context)
+
+		self.__cells = synapse_get_cell_engine(context)
 
 		if prop:
 			j['value'] = self.__cells.get_prop(key, prop)
@@ -508,6 +505,11 @@ class synapse_http_rest_service(object):
 		key = j['key']
 		prop = j.get('prop')
 		value = j.get('value')
+		context = j.get('context')
+		if not context or not context in synapse.dicts:
+			raise cherrypy.HTTPError("400 Bad Request", "Invalid Context specified (%s)" % context)
+
+		self.__cells = synapse_get_cell_engine(context)
 
 		if prop:
 			j['value'] = self.__cells.set_prop(key, prop, value)
@@ -540,12 +542,10 @@ class synapse_http_server(object):
 	root = None
 	conf = None
 	rest = None
-	cells = None
 
-	def __init__(self,port=synapse.http.port,cells=None,title='synapse Web Service',log_screen=False,services=[]):
-		self.cells = cells or synapse_get_current_dictionary()
+	def __init__(self,port=synapse.http.port,title='synapse Web Service',log_screen=False,services=[]):
 		self.root = synapse_http_root_service("%s on port %d" % (title, port))
-		self.rest = synapse_http_rest_service(name='rest',cells=cells)
+		self.rest = synapse_http_rest_service(name='rest')
 		self.root.__setattr__(self.rest.name, self.rest)
 
 		self.conf = {
@@ -579,9 +579,11 @@ class synapse_http_client(synapse_client_interface):
 	__url__ = None
 	response = None
 	trust_env = False
+	context = 'root'
 
-	def __init__(self, port=synapse.http.port, host=synapse.http.host, trust_env=False):
+	def __init__(self, port=synapse.http.port, host=synapse.http.host, trust_env=False, context='root'):
 		self.trust_env = trust_env
+		self.context = context
 		if not ('NO_PROXY' in os.environ):
 			os.environ['NO_PROXY'] = "127.0.0.1,localhost,%s" % socket.gethostname()
 		self.__url__ = "http://%s:%d/rest" % (host, port)
@@ -595,33 +597,33 @@ class synapse_http_client(synapse_client_interface):
 
 	def get_cell(self, key, value=None):
 		"""Returns the contents of the cell"""
-		data = {'action':'get_cell', 'key':key, 'value':value}
+		data = {'action':'get_cell', 'key':key, 'value':value, 'context':self.context}
 		self.response = requests.get(self.__url__, params={'data':json.dumps(data)})
 		return self.__response()
 
 	def set_cell(self, key, value=None):
 		"""Set the contents of the cell"""
-		data = {'action':'set_cell', 'key':key, 'value':value}
+		data = {'action':'set_cell', 'key':key, 'value':value, 'context':self.context}
 		self.response = requests.post(self.__url__, data={'data':json.dumps(data)})
 		return self.__response()
 
 	def get_prop(self, key, prop, value=None):
 		"""Returns the contents of the cell"""
-		data = {'action':'get_prop', 'key':key, 'prop':prop, 'value':value}
+		data = {'action':'get_prop', 'key':key, 'prop':prop, 'value':value, 'context':self.context}
 		self.response = requests.get(self.__url__, params={'data':json.dumps(data)})
 		return self.__response()
 
 	def set_prop(self, key, prop, value=None):
 		"""Set the contents of the cell"""
-		data = {'action':'set_prop', 'key':key, 'prop':prop, 'value':value}
+		data = {'action':'set_prop', 'key':key, 'prop':prop, 'value':value, 'context':self.context}
 		self.response = requests.post(self.__url__, data={'data':json.dumps(data)})
 		return self.__response()
 
-	def __getattr__(self, key):
-		return self.get_cell(key)
+#	def __getattr__(self, key):
+#		return self.get_cell(key)
 
-	def __setattr__(self, key, value):
-		return self.set_cell(key, value)
+#	def __setattr__(self, key, value):
+#		return self.set_cell(key, value)
 
 	def __getitem__(self, key):
 		"""
@@ -644,16 +646,15 @@ class synapse_http_client(synapse_client_interface):
 	def RaiseError(self):
 		raise requests.exceptions.HTTPError(404)
 
-def synapse_http_cell_engine(port=synapse.http.port, host=synapse.http.host, trust_env=False):
+def synapse_http_cell_engine(port=synapse.http.port, host=synapse.http.host, trust_env=False, context='root'):
 	"""Returns a cell engine from a new HTTP_Client"""
-	return synapse_cell_engine(synapse_http_client(port=port, host=host, trust_env=trust_env))
+	return synapse_cell_engine(synapse_http_client(port=port, host=host, trust_env=trust_env, context=context))
 
 synapse.http.service = synapse_http_server
 synapse.http.cells = synapse_http_cell_engine
 
 def synapse_server(port=synapse.http.port):
-	synapse_http_server(port)
-	return synapse_cell_engine()
+	return synapse_http_server(port)
 
-def synapse_client(port=synapse.http.port, host=synapse.http.host):
-	return synapse_http_cell_engine(port,host)
+def synapse_client(port=synapse.http.port, host=synapse.http.host,context='root'):
+	return synapse_http_cell_engine(port=port,host=host,context=context)
