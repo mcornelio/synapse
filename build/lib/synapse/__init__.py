@@ -7,6 +7,7 @@ import string
 import collections
 import logging
 
+__version__ = "1.1.0"
 
 class synapse_client_interface(object):
 
@@ -65,11 +66,11 @@ class synapse_dictionary(collections.MutableMapping):
 
 synapse = synapse_dictionary()
 synapse.process_id = "%s-%d" % (socket.gethostname(), os.getpid())
-synapse.title = "Synapse Console Interface v1.0"
+synapse.title = "Synapse Console Interface v" + __version__
 synapse.prompts = {'ps1':'sc> ', 'ps2':'.... '}
 synapse.exit_prompt = "Use exit() plus Return to exit."
 synapse.dict_list = []
-synapse.dicts = {}
+synapse.sheets = {}
 synapse.current_cell_engine_context = None
 synapse.current_cell_engine = None
 synapse.log_file = 'synapse.log'
@@ -241,9 +242,9 @@ def synapse_get_cell_engine(context='root'):
 	global synapse
 	lname = context.lower()
 	synapse.current_cell_engine_context = lname
-	if lname in synapse.dicts:
-		return synapse.dicts[lname]
-	synapse.current_cell_engine = synapse.dicts[lname] = synapse_cell_dictionary()
+	if lname in synapse.sheets:
+		return synapse.sheets[lname]
+	synapse.current_cell_engine = synapse.sheets[lname] = synapse_cell_dictionary()
 	return synapse.current_cell_engine
 
 def exit(status=0):
@@ -433,7 +434,7 @@ synapse.cells = synapse_cell_engine
 synapse.help = synapse_help
 synapse_dict = synapse_dictionary
 synapse_cells = synapse_cell_engine
-synapse_spreadsheet = synapse_cell_engine
+synapse_spreadsheet = synapse_get_cell_engine
 
 #############################
 
@@ -446,7 +447,7 @@ synapse.http = synapse_dictionary()
 synapse.http.port = 8888
 synapse.http.host = "127.0.0.1"
 
-logger = synapse_logger('http')
+logger = None
 protocol = 'http'
 
 
@@ -488,7 +489,7 @@ class synapse_http_rest_service(object):
 		prop = j.get('prop')
 		value = j.get('value')
 		context = j.get('context')
-		if not context or not context in synapse.dicts:
+		if not context or not context in synapse.sheets:
 			raise cherrypy.HTTPError("400 Bad Request", "Invalid Context specified (%s)" % context)
 
 		self.__cells = synapse_get_cell_engine(context)
@@ -506,7 +507,7 @@ class synapse_http_rest_service(object):
 		prop = j.get('prop')
 		value = j.get('value')
 		context = j.get('context')
-		if not context or not context in synapse.dicts:
+		if not context or not context in synapse.sheets:
 			raise cherrypy.HTTPError("400 Bad Request", "Invalid Context specified (%s)" % context)
 
 		self.__cells = synapse_get_cell_engine(context)
@@ -544,6 +545,9 @@ class synapse_http_server(object):
 	rest = None
 
 	def __init__(self,port=synapse.http.port,title='synapse Web Service',log_screen=False,services=[]):
+		global logger
+		logger = synapse_logger('http',file="synapse_%d_%d.log" % (port, os.getpid()))
+
 		self.root = synapse_http_root_service("%s on port %d" % (title, port))
 		self.rest = synapse_http_rest_service(name='rest')
 		self.root.__setattr__(self.rest.name, self.rest)
