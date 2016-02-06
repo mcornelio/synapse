@@ -6,10 +6,11 @@ import socket
 import string
 import collections
 import logging
+import atexit
 
 __version__ = "1.1.0"
 
-class synapse_client_interface(object):
+class client_interface(object):
 
 	def get_cell(self, key, value=None):
 		"""Returns the contents of the cell"""
@@ -27,18 +28,18 @@ class synapse_client_interface(object):
 		"""Set the contents of the cell"""
 		raise NotImplementedError("""set_prop(self, key, prop, value=None)""")
 
-def synapse_emergency_exit(status=1, msg=None, ):
+def emergency_exit(status=1, msg=None, ):
 	"""Force an exit"""
 	if msg:
 		print msg
 	os._exit(status)
 
-def synapse_trace_log_info(f, *args, **kw):
-	global synapse
-	synapse.logger.info("calling %s with args %s, %s" % (f.__name__, args, kw))
+def trace_log_info(f, *args, **kw):
+	"""Trace function invocation"""
+	logger.info("calling %s with args %s, %s" % (f.__name__, args, kw))
 	return f(*args, **kw)
 
-class synapse_dictionary(collections.MutableMapping):
+class base_dictionary(collections.MutableMapping):
 	"""A dictionary that applies an arbitrary key-altering
 	function before accessing the keys"""
 
@@ -64,19 +65,21 @@ class synapse_dictionary(collections.MutableMapping):
 	def __keytransform__(self, key):
 		return key.lower()
 
-synapse = synapse_dictionary()
-synapse.process_id = "%s-%d" % (socket.gethostname(), os.getpid())
-synapse.title = "Synapse Console Interface v" + __version__
-synapse.prompts = {'ps1':'sc> ', 'ps2':'.... '}
-synapse.exit_prompt = "Use exit() plus Return to exit."
-synapse.dict_list = []
-synapse.sheets = {}
-synapse.current_cell_engine_context = None
-synapse.current_cell_engine = None
-synapse.log_file = 'synapse.log'
-synapse.log_level = logging.WARNING
+synapse = base_dictionary()
+synapse_process_id = "%s-%d" % (socket.gethostname(), os.getpid())
+synapse_title = "Synapse Console Interface v" + __version__
+synapse_ps1 = 'sc> '
+synapse_ps2 = '.... '
+synapse_prompts = {'ps1':'sc> ', 'ps2':'.... '}
+synapse_exit_prompt = "Use exit() plus Return to exit."
+synapse_dict_list = []
+synapse_sheets = {}
+synapse_current_cell_engine_context = None
+synapse_current_cell_engine = None
+get_logger_file = 'synapse.log'
+get_logger_level = logging.WARNING
 
-def synapse_logger(name, file=synapse.log_file, level=synapse.log_level):
+def initialize_logger(name, file=get_logger_file, level=get_logger_level):
 # create logger with 'name'
 	logger = logging.getLogger(name)
 	logger.setLevel(logging.DEBUG)
@@ -98,16 +101,17 @@ def synapse_logger(name, file=synapse.log_file, level=synapse.log_level):
 	logger.addHandler(ch)
 	return logger
 
-def synapse_log():
+def get_logger():
+	"""Returns the current logger"""
 	global logger
 	return logger;
 
-class synapse_cell_dictionary(synapse_dictionary,synapse_client_interface):
+class cell_dictionary(base_dictionary,client_interface):
 	"""synapse Dictionary with Formulas and Guards"""
 
-	__formulas__ = synapse_dictionary()
-	__guards__ = synapse_dictionary()
-	__props__ = synapse_dictionary()
+	__formulas__ = base_dictionary()
+	__guards__ = base_dictionary()
+	__props__ = base_dictionary()
 	__engine__ = None
 	
 	def set_formula(self, name, formula):
@@ -163,7 +167,7 @@ class synapse_cell_dictionary(synapse_dictionary,synapse_client_interface):
 		"""
 		key = self.__keytransform__(key)
 		if not(key in self.__props__):
-			self.__props__[key] = synapse_dictionary()
+			self.__props__[key] = base_dictionary()
 		props = self.__props__[key]
 		props[prop] = value
 		return props[prop]
@@ -177,7 +181,7 @@ class synapse_cell_dictionary(synapse_dictionary,synapse_client_interface):
 		"""
 		key = self.__keytransform__(key)
 		if not(key in self.__props__):
-			self.__props__[key] = synapse_dictionary()
+			self.__props__[key] = base_dictionary()
 		props = self.__props__[key]
 		if (prop in props):
 			return props[prop]
@@ -193,7 +197,7 @@ class synapse_cell_dictionary(synapse_dictionary,synapse_client_interface):
 		"""
 		key = self.__keytransform__(key)
 		if not(key in self.__props__):
-			self.__props__[key] = synapse_dictionary()
+			self.__props__[key] = base_dictionary()
 		return self.__props__[key]
 
 	def __getitem__(self, key, value=None):
@@ -237,31 +241,15 @@ class synapse_cell_dictionary(synapse_dictionary,synapse_client_interface):
 			return None
 		del self.store[self.__keytransform__(key)]
 
-def synapse_get_cell_engine(context='root'):
+def get_cell_engine(context='root'):
 	"""Create a new CellEngine"""
 	global synapse
 	lname = context.lower()
-	synapse.current_cell_engine_context = lname
-	if lname in synapse.sheets:
-		return synapse.sheets[lname]
-	synapse.current_cell_engine = synapse.sheets[lname] = synapse_cell_dictionary()
-	return synapse.current_cell_engine
-
-def exit(status=0):
-	"""
-	Exit Synapse
-	:param status: the status to return to the shell
-	:return: does not return
-	"""
-	os._exit(status)
-
-def quit(status=0):
-	"""
-	Exit Synapse
-	:param status: the status to return to the shell
-	:return: does not return
-	"""
-	exit(status)
+	synapse_current_cell_engine_context = lname
+	if lname in synapse_sheets:
+		return synapse_sheets[lname]
+	synapse_current_cell_engine = synapse_sheets[lname] = cell_dictionary()
+	return synapse_current_cell_engine
 
 def wait_for_ctrlc(seconds=1):
 	"""
@@ -275,7 +263,7 @@ def wait_for_ctrlc(seconds=1):
 	except KeyboardInterrupt:
 		pass
 
-class synapse_cell_engine(object):
+class cell_engine(object):
 	"""
 	The Synapse Cell Engine class.
 	"""
@@ -299,11 +287,11 @@ class synapse_cell_engine(object):
 	def __init__(self,cells=None):
 		"""
 		Constructor for a Synapse Cell Engine
-		:param cells: a synapse_client_interface instance. If not specified, set to the current synapse_dictionary
+		:param cells: a client_interface instance. If not specified, set to the current base_dictionary
 		"""
 		if not cells:
-			cells = synapse_get_cell_engine()
-		if not isinstance(cells,synapse_client_interface):
+			cells = get_cell_engine()
+		if not isinstance(cells,client_interface):
 			raise RuntimeError("%s is not a subclass of synapse_AbstractClient" % type(cells))
 		self.__set('__cells', cells)
 
@@ -403,38 +391,13 @@ class synapse_cell_engine(object):
 	
 	def close(self):
 		pass
-	
-def synapse_help():
-	print string.replace("""
-	#++
-	# synapse Adapters can act as servers or clients
-	# or both servers and clients simultaneously
-	#--
-	=============( Server )==============
-	# Start synapse http service
-	c = synapse_server(port=port, host=host)
-	
-	# Set an get arbitrary cell value
-	c.mycell = 3.14159
-	my_value = my_eng.mycell
-	
-	=============( Client )==============
-	# Connect to remote synapse http service
-	r = synapse_connect(port=port, host=host)
 
-	# Get arbitrary cell velues remotely
-	v = r.mycell
-
-	# Set arbitrary cell velues remotely
-	r.mycell = 3.1416
 	
-	""", '\t', '')
-	
-synapse.cells = synapse_cell_engine
-synapse.help = synapse_help
-synapse_dict = synapse_dictionary
-synapse_cells = synapse_cell_engine
-synapse_spreadsheet = synapse_get_cell_engine
+#synapse.cells = cell_engine
+#synapse.help = synapse_help
+#synapse_dict = base_dictionary
+#synapse_cells = cell_engine
+synapse_spreadsheet = get_cell_engine
 
 #############################
 
@@ -443,15 +406,15 @@ import json
 import requests
 import threading
 
-synapse.http = synapse_dictionary()
-synapse.http.port = 8888
-synapse.http.host = "127.0.0.1"
+#synapse.http = base_dictionary()
+synapse_http_port = 8888
+synapse_http_host = "127.0.0.1"
 
 logger = None
 protocol = 'http'
 
 
-class synapse_http_root_service(object):
+class http_root_service(object):
 
 	def __init__(self,title="synapse Web Service"):
 		self.__title = title
@@ -460,7 +423,7 @@ class synapse_http_root_service(object):
 	def index(self):
 		return self.__title
 
-class synapse_http_rest_service(object):
+class http_rest_service(object):
 
 	exposed = True
 	name = 'rest'
@@ -472,7 +435,7 @@ class synapse_http_rest_service(object):
 		'tools.response_headers.headers': [('Content-Type', 'application/json')]
 	}
 
-	__cells = synapse_get_cell_engine()
+	__cells = get_cell_engine()
 
 	def __init__(self,name=None, conf=None, cells=None):
 		if cells:
@@ -489,10 +452,10 @@ class synapse_http_rest_service(object):
 		prop = j.get('prop')
 		value = j.get('value')
 		context = j.get('context')
-		if not context or not context in synapse.sheets:
+		if not context or not context in synapse_sheets:
 			raise cherrypy.HTTPError("400 Bad Request", "Invalid Context specified (%s)" % context)
 
-		self.__cells = synapse_get_cell_engine(context)
+		self.__cells = get_cell_engine(context)
 
 		if prop:
 			j['value'] = self.__cells.get_prop(key, prop)
@@ -507,10 +470,10 @@ class synapse_http_rest_service(object):
 		prop = j.get('prop')
 		value = j.get('value')
 		context = j.get('context')
-		if not context or not context in synapse.sheets:
+		if not context or not context in synapse_sheets:
 			raise cherrypy.HTTPError("400 Bad Request", "Invalid Context specified (%s)" % context)
 
-		self.__cells = synapse_get_cell_engine(context)
+		self.__cells = get_cell_engine(context)
 
 		if prop:
 			j['value'] = self.__cells.set_prop(key, prop, value)
@@ -536,7 +499,9 @@ class synapse_http_rest_service(object):
 		jdata = json.loads(data)
 		return {"from":"delete", "data":jdata}
 
-class synapse_http_server(object):
+http_server_running = False
+
+class http_server(object):
 	"""Starts a local synapse HTTP Web Service."""
 
 	thread = None
@@ -544,12 +509,14 @@ class synapse_http_server(object):
 	conf = None
 	rest = None
 
-	def __init__(self,port=synapse.http.port,title='synapse Web Service',log_screen=False,services=[]):
+	def __init__(self,port=synapse_http_port,title='synapse Web Service',log_screen=False,services=[]):
 		global logger
-		logger = synapse_logger('http',file="synapse_%d_%d.log" % (port, os.getpid()))
+		global http_server_running
 
-		self.root = synapse_http_root_service("%s on port %d" % (title, port))
-		self.rest = synapse_http_rest_service(name='rest')
+		logger = initialize_logger('http',file="synapse_%d_%d.log" % (port, os.getpid()))
+
+		self.root = http_root_service("%s on port %d" % (title, port))
+		self.rest = http_rest_service(name='rest')
 		self.root.__setattr__(self.rest.name, self.rest)
 
 		self.conf = {
@@ -576,8 +543,9 @@ class synapse_http_server(object):
 		self.thread = threading.Thread(target=worker)
 		self.thread.daemon = True
 		self.thread.start()
+		http_server_running = True;
 
-class synapse_http_client(synapse_client_interface):
+class http_client(client_interface):
 	"""Creates a new HTTP Client"""
 
 	__url__ = None
@@ -585,7 +553,7 @@ class synapse_http_client(synapse_client_interface):
 	trust_env = False
 	context = 'root'
 
-	def __init__(self, port=synapse.http.port, host=synapse.http.host, trust_env=False, context='root'):
+	def __init__(self, port=synapse_http_port, host=synapse_http_host, trust_env=False, context='root'):
 		self.trust_env = trust_env
 		self.context = context
 		if not ('NO_PROXY' in os.environ):
@@ -650,15 +618,40 @@ class synapse_http_client(synapse_client_interface):
 	def RaiseError(self):
 		raise requests.exceptions.HTTPError(404)
 
-def synapse_http_cell_engine(port=synapse.http.port, host=synapse.http.host, trust_env=False, context='root'):
+def http_cell_engine(port=synapse_http_port, host=synapse_http_host, trust_env=False, context='root'):
 	"""Returns a cell engine from a new HTTP_Client"""
-	return synapse_cell_engine(synapse_http_client(port=port, host=host, trust_env=trust_env, context=context))
+	return cell_engine(http_client(port=port, host=host, trust_env=trust_env, context=context))
 
-synapse.http.service = synapse_http_server
-synapse.http.cells = synapse_http_cell_engine
+#synapse.http.service = http_server
+#synapse.http.cells = http_cell_engine
 
-def synapse_server(port=synapse.http.port):
-	return synapse_http_server(port)
+def _server(port=synapse_http_port):
+	return http_server(port)
 
-def synapse_client(port=synapse.http.port, host=synapse.http.host,context='root'):
-	return synapse_http_cell_engine(port=port,host=host,context=context)
+def _client(port=synapse_http_port, host=synapse_http_host,context='root'):
+	return http_cell_engine(port=port,host=host,context=context)
+
+def exit(status=1):
+	global logger
+	if http_server_running == True:
+		cherrypy.engine.exit()
+	if logger != None:
+		logging.shutdown()
+	print("Goodbye from Synapse")
+	sys.exit(status)
+
+def main():
+	from . import exit
+	sys.ps1 = synapse_ps1
+	sys.ps2 = synapse_ps2
+	print synapse_title
+	print synapse_exit_prompt
+
+	sys.tracebacklimit = 0
+
+	try:
+		for file in sys.argv[1:]:
+			print "execfile(%s)" % file
+			execfile(file)
+	finally:
+		pass
