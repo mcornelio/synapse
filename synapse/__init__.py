@@ -9,6 +9,7 @@ import logging
 import atexit
 
 __version__ = "1.1.0"
+__all__ = ['main','amqp']
 
 class client_interface(object):
 
