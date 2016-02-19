@@ -4,7 +4,7 @@ from setuptools import setup
 from datetime import datetime
 
 def version_string():
-    return "1.1.4"
+    return "1.1.6"
 
 readme = open('README.md', 'r')
 README_TEXT = readme.read()
@@ -21,7 +21,7 @@ setup(name='synapse',
       license='MIT',
       packages=['synapse'],
       install_requires=[
-          'cherrypy', 'requests', 'decorator'
+          'cherrypy', 'requests', 'decorator', 'rpyc'
       ],
       scripts=[
             'scripts/synapse'

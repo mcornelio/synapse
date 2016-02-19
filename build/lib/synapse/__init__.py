@@ -554,8 +554,7 @@ class http_client(client_interface):
 	trust_env = False
 	context = 'root'
 
-	def __init__(self, port=synapse_http_port, host=synapse_http_host, trust_env=False, context='root'):
-		self.trust_env = trust_env
+	def __init__(self, port=synapse_http_port, host=synapse_http_host, context='root'):
 		self.context = context
 		if not ('NO_PROXY' in os.environ):
 			os.environ['NO_PROXY'] = "127.0.0.1,localhost,%s" % socket.gethostname()
@@ -592,12 +591,6 @@ class http_client(client_interface):
 		self.response = requests.post(self.__url__, data={'data':json.dumps(data)})
 		return self.__response()
 
-#	def __getattr__(self, key):
-#		return self.get_cell(key)
-
-#	def __setattr__(self, key, value):
-#		return self.set_cell(key, value)
-
 	def __getitem__(self, key):
 		"""
 		Returns the value of a cell when referenced as an item
@@ -619,12 +612,9 @@ class http_client(client_interface):
 	def RaiseError(self):
 		raise requests.exceptions.HTTPError(404)
 
-def http_cell_engine(port=synapse_http_port, host=synapse_http_host, trust_env=False, context='root'):
+def http_cell_engine(port=synapse_http_port, host=synapse_http_host, context='root'):
 	"""Returns a cell engine from a new HTTP_Client"""
-	return cell_engine(http_client(port=port, host=host, trust_env=trust_env, context=context))
-
-#synapse.http.service = http_server
-#synapse.http.cells = http_cell_engine
+	return cell_engine(http_client(port=port, host=host, context=context))
 
 def _server(port=synapse_http_port):
 	return http_server(port)
@@ -656,3 +646,101 @@ def main():
 			execfile(file)
 	finally:
 		pass
+
+import rpyc
+from rpyc.utils.server import ThreadedServer
+import threading
+
+synapse_rpc_port = 9999
+synapse_rpc_host = "127.0.0.1"
+
+
+def rpc_server(port):
+	"""Create a new RPC Server"""
+	class SynapseRpcService(rpyc.Service):
+
+		def on_connect(self):
+			"""Called on connection"""
+			pass
+
+		def on_disconnect(self):
+			"""Called on disconnection"""
+			pass
+
+		def exposed_get_cell(self, key, value=None, context='root'): # Get Cell
+			x = get_cell_engine(context)
+			return x.get_cell(key, value)
+
+		def exposed_set_cell(self, key, value=None, context='root'): # Set Cell
+			x = get_cell_engine(context)
+			return x.set_cell(key, value)
+
+		def exposed_get_prop(self, key, prop, context='root'):
+			x = get_cell_engine(context)
+			return x.get_prop(key, prop)
+
+		def exposed_set_prop(self,key, prop, value=None, context='root'):
+			x = get_cell_engine(context)
+			return x.set_prop(key, prop, value)
+
+	def server_thread():
+		ts = ThreadedServer(SynapseRpcService,port=port)
+		ts.start()
+
+	t = threading.Thread(target=server_thread)
+	t.daemon = True
+	t.start()
+	return t
+
+class rpc_client(client_interface):
+	"""Creates a new RPC Client"""
+
+	__url__ = None
+	response = None
+	context = 'root'
+	conn = None
+
+	def __init__(self, port=synapse_rpc_port, host=synapse_rpc_host, context='root'):
+		self.conn = rpyc.connect(host,port)
+		self.context = context
+		if not ('NO_PROXY' in os.environ):
+			os.environ['NO_PROXY'] = "127.0.0.1,localhost,%s" % socket.gethostname()
+		self.__url__ = "rpc://%s:%d/rest" % (host, port)
+
+	def get_cell(self, key, value=None):
+		"""Returns the contents of the cell"""
+		return self.conn.root.get_cell(key, value, context=self.context)
+
+	def set_cell(self, key, value=None):
+		"""Set the contents of the cell"""
+		return self.conn.root.set_cell(key, value, context=self.context)
+
+	def get_prop(self, key, prop):
+		"""Returns the contents of the cell"""
+		return self.conn.root.get_prop(key, prop, context=self.context)
+
+	def set_prop(self, key, prop, value=None):
+		"""Set the contents of the cell"""
+		return self.conn.root.set_prop(key, prop, value, context=self.context)
+
+	def __getitem__(self, key):
+		"""
+		Returns the value of a cell when referenced as an item
+		:param key: the name of the cell as a string
+		:param value: an optional value
+		:return: the value of the cell
+		"""
+		return self.get_cell(key)
+
+	def __setitem__(self, key, value):
+		"""
+		Sets the value of a cell when referenced as an item
+		:param key: the name of the cell as a string
+		:param value: the new value for the cell
+		:return: the value of the cell
+		"""
+		return self.set_cell(key, value)
+
+def rpc_cell_engine(port=synapse_http_port, host=synapse_http_host, context='root'):
+	"""Returns a cell engine from a new HTTP_Client"""
+	return cell_engine(rpc_client(port=port, host=host, context=context))
