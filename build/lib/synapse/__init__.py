@@ -8,7 +8,7 @@ import collections
 import logging
 import atexit
 
-__version__ = "1.1.0"
+__version__ = "1.1.19"
 __all__ = ['main','amqp']
 
 class client_interface(object):
@@ -357,6 +357,15 @@ class cell_engine(object):
 		"""
 		return self.cells().get_prop(key,prop)
 	
+	def get_props(self,key):
+		"""
+		Returns the current value of a cell's property
+		:param key: the name of the cell as a string
+		:param prop: the name of the property as a string
+		:return: the current value of the property
+		"""
+		return self.cells().get_props(key)
+
 	def __delattr__(self,key):
 		del self.cells()[key]
 
@@ -679,6 +688,10 @@ def rpc_server(port):
 			x = get_cell_engine(context)
 			return x.get_prop(key, prop)
 
+		def exposed_get_props(self, key, context='root'):
+			x = get_cell_engine(context)
+			return x.get_props(key)
+
 		def exposed_set_prop(self,key, prop, value=None, context='root'):
 			x = get_cell_engine(context)
 			return x.set_prop(key, prop, value)
@@ -737,6 +750,14 @@ class rpc_client(client_interface):
 		except EOFError:
 			self.__connect()
 			return self.conn.root.get_prop(key, prop, context=self.context)
+
+	def get_props(self, key):
+		"""Returns the contents of the cell"""
+		try:
+			return self.conn.root.get_props(key, context=self.context)
+		except EOFError:
+			self.__connect()
+			return self.conn.root.get_props(key, context=self.context)
 
 	def set_prop(self, key, prop, value=None):
 		"""Set the contents of the cell"""
