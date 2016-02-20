@@ -699,29 +699,52 @@ class rpc_client(client_interface):
 	response = None
 	context = 'root'
 	conn = None
+	host = None
+	port = None
+
+	def __connect(self):
+		self.conn = rpyc.connect(self.host,self.port)
 
 	def __init__(self, port=synapse_rpc_port, host=synapse_rpc_host, context='root'):
-		self.conn = rpyc.connect(host,port)
+		self.host = host
+		self.port = port
 		self.context = context
+		self.__url__ = "rpc://%s:%d/rest" % (host, port)
 		if not ('NO_PROXY' in os.environ):
 			os.environ['NO_PROXY'] = "127.0.0.1,localhost,%s" % socket.gethostname()
-		self.__url__ = "rpc://%s:%d/rest" % (host, port)
+		self.__connect()
 
 	def get_cell(self, key, value=None):
 		"""Returns the contents of the cell"""
-		return self.conn.root.get_cell(key, value, context=self.context)
+		try:
+			return self.conn.root.get_cell(key, value, context=self.context)
+		except EOFError:
+			self.__connect()
+			return self.conn.root.get_cell(key, value, context=self.context)
 
 	def set_cell(self, key, value=None):
 		"""Set the contents of the cell"""
-		return self.conn.root.set_cell(key, value, context=self.context)
+		try:
+			return self.conn.root.set_cell(key, value, context=self.context)
+		except EOFError:
+			self.__connect()
+			return self.conn.root.set_cell(key, value, context=self.context)
 
 	def get_prop(self, key, prop):
 		"""Returns the contents of the cell"""
-		return self.conn.root.get_prop(key, prop, context=self.context)
+		try:
+			return self.conn.root.get_prop(key, prop, context=self.context)
+		except EOFError:
+			self.__connect()
+			return self.conn.root.get_prop(key, prop, context=self.context)
 
 	def set_prop(self, key, prop, value=None):
 		"""Set the contents of the cell"""
-		return self.conn.root.set_prop(key, prop, value, context=self.context)
+		try:
+			return self.conn.root.set_prop(key, prop, value, context=self.context)
+		except EOFError:
+			self.__connect()
+			return self.conn.root.set_prop(key, prop, value, context=self.context)
 
 	def __getitem__(self, key):
 		"""
