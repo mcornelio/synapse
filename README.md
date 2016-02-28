@@ -47,10 +47,10 @@ Synapse cells are very similar to cells in a typical spreadsheet.
 You may set and get the cells in a synapse spreadsheet after instantiating
 a synapse spreadsheet.
 
-    sc> c = synapse_spreadsheet()
+    sc> c = synapse.spreadsheet()
     sc> import math
-    sc> c.set_cell('pi', math.pi)
-    sc> mypi = c.get_cell('pi')
+    sc> c['pi'] = math.pi)
+    sc> mypi = c]'pi']
 
 ##Cell Values
 A cell may contain any JSON encodable value.  That is:
@@ -86,7 +86,7 @@ with the set_formula method for the spreadsheet.
 Now, when you access the cell, the formula will be evaluated and its value returned.
 For example:
 
-    sc> theValue = c.get_cell('pi360')
+    sc> theValue = c['pi360']
 
 ###Guards
 Unlike a spreadsheet, you may attach guards to a synapse cell.
@@ -112,9 +112,10 @@ takes two arguments, a key and a value.  The guard should either
 
 ###Servers
 Synapse applications can export their spreadsheets by acting as a server.
-To do this, use the synapse_server function and specify a port number.
+Synpase supports various protocols.  The simplest to use is the "RPC" (Remote Procedure Call) protocol.
+To do this using RPC, use the synapse.rpc.server function and specify a port number.
 
-    sc> synapse_server(2500)
+    sc> synapse.rpc.server(2500)
 
 Please note, formulas and guards can only be defined on the server side spreadsheet.
 That is, you may only define formulas and guards for the spreadsheet
@@ -131,17 +132,17 @@ To see this in action, start another interactive synapse application and connect
     python -i -m synapse.main
     Synapse Console Interface v1.0
     Use exit() plus Return to exit.
-    sc> s = synapse_client(2500)
-    sc> s.get_cell('pi')
+    sc> s = synapse.rpc.client(2500)
+    sc> s.['pi']
     3.141592653589793
 
 Notice how the client has a real-time view into the server's data.
 Each synapse server should have a unique port number for a specific host.
 If your server is on another host, you may specify a hostname or IP address.
 
-    sc> r = synapse_client(port=2500, host='192.168.0.35');
+    sc> r = synapse.rpc.client(port=2500, host='192.168.0.35');
 
-This will connect to the synapse server on '192.168.0.35' on port 2500.
+This will connect to the synapse RPC server on '192.168.0.35' on port 2500.
 Connections may be bi-directional.  That is, a synapse application may be both a server and client.
 
 Please note, you cannot set formulas or guards on a remote synapse application server.

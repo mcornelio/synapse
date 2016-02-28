@@ -993,3 +993,26 @@ def stomp_cell_engine(port=synapse_stomp_port, host=synapse_stomp_host, context=
 	"""Returns a cell engine from a new HTTP_Client"""
 	return cell_engine(stomp_client(port=port, host=host, context=context))
 
+
+class stomp_wrapper_class(object):
+	def server(self, port):
+		return stomp_server(port)
+	def client(self, port=synapse_stomp_port, host=synapse_stomp_host, context='root'):
+		return cell_engine(stomp_client(port=port, host=host, context=context))
+
+class rpc_wrapper_class(object):
+	def server(self, port):
+		return rpc_server(port)
+	def client(self, port=synapse_stomp_port, host=synapse_stomp_host, context='root'):
+		return cell_engine(rpc_client(port=port, host=host, context=context))
+
+class http_wrapper_class(object):
+	def server(self, port):
+		return http_server(port)
+	def client(self, port=synapse_stomp_port, host=synapse_stomp_host, context='root'):
+		return cell_engine(http_client(port=port, host=host, context=context))
+
+stomp = stomp_wrapper_class()
+http = http_wrapper_class()
+rpc = rpc_wrapper_class()
+spreadsheet = synapse_spreadsheet
