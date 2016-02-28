@@ -8,7 +8,7 @@ import collections
 import logging
 import atexit
 
-__version__ = "1.1.19"
+__version__ = "1.1.26"
 __all__ = ['main','amqp']
 
 class client_interface(object):
@@ -764,6 +764,232 @@ class rpc_client(client_interface):
 		"""
 		return self.set_cell(key, value)
 
-def rpc_cell_engine(port=synapse_http_port, host=synapse_http_host, context='root'):
+def rpc_cell_engine(port=synapse_rpc_port, host=synapse_rpc_host, context='root'):
 	"""Returns a cell engine from a new HTTP_Client"""
 	return cell_engine(rpc_client(port=port, host=host, context=context))
+
+class paramsdict(object):
+	hash = {}
+	def __init__(self, msg):
+		lines = msg.rstrip('\n').split('\n')
+		self.head = lines[0];
+		self.action = self.head.split('.').pop().lower()
+		self.body = lines[1:]
+		self.hash = {}
+		for i in range(0,len(self.body)):
+			pos = self.body[i].index(":")
+			key = self.__key(self.body[i][:pos])
+			val = self.body[i][pos+1:]
+			self.hash[key] = val
+
+	def ack(self):
+		if not self.head.endswith('.ack'):
+			self.head = self.head + '.ack'
+
+	def __key(self,key):
+		return key.strip().lower()
+
+	def __getitem__(self, key):
+		fkey = self.__key(key)
+		if fkey in self.hash:
+			return self.hash[fkey]
+
+	def __setitem__(self, key, value):
+		fkey = self.__key(key)
+		self.hash[fkey] = value
+		return value
+
+	def __repr__(self):
+		return self._string()
+
+	def _string(self):
+		result = self.head + '\n'
+		for key in self.hash:
+			result = result + "{}:{}\n".format(key,self.hash[key])
+		return result + '\n'
+
+import SocketServer
+
+synapse_stomp_port = 10000
+synapse_stomp_host = "127.0.0.1"
+
+class synapse_stomp_handler(SocketServer.StreamRequestHandler):
+	"""
+	The request handler class for our server.
+
+	It is instantiated once per connection to the server, and must
+	override the handle() method to implement communication to the
+	client.
+	"""
+	def cell_engine(self,pd):
+		context = pd['ctx']
+		if not context:
+			return get_cell_engine()
+		else:
+			return get_cell_engine(context)
+
+	def set_error(self,pd,msg):
+		pd['$err'] = msg
+
+	def set_answer(self,pd,msg):
+		pd['@ans'] = msg
+
+	def process_message(self, pd):
+		x = self.cell_engine(pd)
+		theVar = pd['var']
+		theVal = pd['val']
+		theProp = pd['prop']
+		action = pd.action
+		ACTION = lambda (x) : True if action == x else False
+
+		try:
+			if ACTION('get-cell'):
+				self.set_answer(pd, x.get_cell(theVar, theVal))
+			elif ACTION('set-cell'):
+				x.set_cell(theVar, theVal)
+				self.set_answer(pd, x.get_cell(theVar))
+			elif ACTION('get-prop'):
+				self.set_answer(pd, x.get_prop(theVar, theProp))
+			elif ACTION('set-prop'):
+				self.set_answer(pd, x.set_prop(theVar, theProp, theVal))
+			else:
+				self.set_error(pd, 'Unknown action {}'.format(action))
+		except Exception, e:
+			self.set_error(pd, e.message)
+
+	def handle(self):
+		# self.request is the TCP socket connected to the client
+		client = "%s:%s" % (self.client_address[0], self.client_address[1])
+		print "connect({})".format(client)
+		buf = ""
+		cnt = 0
+		while(True):
+			self.data = self.rfile.readline()
+			print self.data,
+			if not self.data: break
+			buf = buf + self.data
+			if buf.endswith('\n\n'):
+				try:
+					pd = paramsdict(buf)
+					self.process_message(pd)
+					pd.ack()
+					self.wfile.write(pd._string())
+					cnt = 0
+				except:
+					print 'invalid message:{}'.format(buf)
+					break;
+				finally:
+					cnt = cnt + 1
+					buf = ""
+		print "disconnect({}); {} messages".format(client,cnt)
+
+def stomp_server(port):
+	HOST, PORT = "0.0.0.0", port
+
+	# Create the server, binding to localhost on port 9999
+	server = SocketServer.TCPServer((HOST, PORT), synapse_stomp_handler)
+
+	# Activate the server; this will keep running until you
+	# interrupt the program with Ctrl-C
+	def server_thread():
+		server.serve_forever()
+
+
+	t = threading.Thread(target=server_thread)
+	t.daemon = True
+	t.start()
+	return t
+
+class stomp_client(client_interface):
+	"""Creates a new RPC Client"""
+
+	__url__ = None
+	response = None
+	context = 'root'
+	conn = None
+	host = None
+	port = None
+	appid = "{}.{}.{}".format('python', socket.gethostname(), os.getpid())
+
+	def __connect(self):
+		#self.conn = rpyc.connect(self.host,self.port)
+		self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+		# Connect the socket to the port on the server given by the caller
+		self.server_address = (self.host, self.port)
+		print >>sys.stderr, 'connecting to %s port %s' % self.server_address
+		self.sock.connect(self.server_address)
+
+	def __init__(self, port=synapse_stomp_port, host=synapse_stomp_host, context='root'):
+		self.host = host
+		self.port = port
+		self.context = context
+		self.__url__ = "rpc://%s:%d/rest" % (host, port)
+		if not ('NO_PROXY' in os.environ):
+			os.environ['NO_PROXY'] = "127.0.0.1,localhost,%s" % socket.gethostname()
+		self.__connect()
+
+	def __sendrecv(self,data):
+		self.sock.sendall(data)
+		msg = ''
+		while not msg.endswith('\n\n'):
+			data = self.sock.recv(4096)
+			if not data:
+				raise EOFError
+			msg = msg + data;
+		pd = paramsdict(msg)
+		if pd['$err']:
+			raise Exception(pd['$err'])
+		return pd['@ans']
+
+	def __sendmsg(self, action, args):
+		msg = self.__genmsg(action, args)
+		pd = paramsdict(msg)
+		return self.__sendrecv(pd._string())
+
+	def __genmsg(self, action, args):
+		msg = self.appid + "." + action + "\n"
+		args['ctx'] = self.context
+		for k in args:
+			msg = msg + "{}:{}\n".format(k, args[k])
+		msg = msg + "\n"
+		return msg
+
+	def get_cell(self, key, value=None):
+		"""Returns the contents of the cell"""
+		return self.__sendmsg("get-cell", {'var':key, 'val':value})
+
+	def set_cell(self, key, value=None):
+		"""Set the contents of the cell"""
+		return self.__sendmsg("set-cell", {'var':key, 'val':value})
+
+	def get_prop(self, key, prop):
+		"""Returns the contents of the cell"""
+		return self.__sendmsg("get-prop", {'var':key, 'prop':prop})
+
+	def set_prop(self, key, prop, value=None):
+		"""Set the contents of the cell"""
+		return self.__sendmsg("set-prop", {'var':key, 'prop':prop, 'value':value})
+
+	def __getitem__(self, key):
+		"""
+		Returns the value of a cell when referenced as an item
+		:param key: the name of the cell as a string
+		:param value: an optional value
+		:return: the value of the cell
+		"""
+		return self.get_cell(key)
+
+	def __setitem__(self, key, value):
+		"""
+		Sets the value of a cell when referenced as an item
+		:param key: the name of the cell as a string
+		:param value: the new value for the cell
+		:return: the value of the cell
+		"""
+		return self.set_cell(key, value)
+
+def stomp_cell_engine(port=synapse_stomp_port, host=synapse_stomp_host, context='root'):
+	"""Returns a cell engine from a new HTTP_Client"""
+	return cell_engine(stomp_client(port=port, host=host, context=context))
+
